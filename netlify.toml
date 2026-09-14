@@ -1,0 +1,27 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Netlify automatically supplies the current OpenNext adapter.
+# Do not use static export or pin the legacy adapter.
+# No secret values belong in this file.
+
+[context.dev.environment]
+  APP_ENV = "development"
+
+[context.deploy-preview.environment]
+  APP_ENV = "preview"
+
+[context.branch-deploy.environment]
+  APP_ENV = "preview"
+
+[context.production.environment]
+  APP_ENV = "production"
+
+# These labels do not provide data isolation by themselves.
+# Assign distinct Supabase projects and runtime credentials per context in Netlify.
+# The application preview gate remains required in EVERY context.
