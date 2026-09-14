@@ -33,13 +33,23 @@ Production deployment/public release and live Stripe billing are not approved.
 
 ## Verification state
 
-Source prepared through GitHub APIs. No local filesystem or package execution tool is exposed in the editing session. The initial dependency lockfile is therefore pending. CI must be inspected after the commit; do not interpret this document as a successful build report.
+Foundation committed to main: b9051177dec8668a2caed95f95204d64f60b7c1e.
+GitHub Actions run: https://github.com/frostwolf20-dot/jackass/actions/runs/34882111953
 
-Netlify adapter deployment, browser layout, two-user authorization, uploads, OCR, export and billing tests have NOT run.
+Verified successful steps:
+- Dependency installation.
+- TypeScript type checking.
+- Preview-access unit tests.
+- Next.js production build.
+- Production HTTP smoke tests: missing configuration locks routes, incorrect credentials are rejected, authenticated interface/status requests succeed, and conversion remains unavailable.
+
+No local filesystem or package execution tool is exposed in the editing session; verification ran on GitHub Actions. The initial dependency lockfile remains pending. These checks do not verify the Netlify adapter or a hosted deployment.
+
+Netlify adapter deployment, visual browser layout, two-user product authorization, uploads, OCR, export and billing tests have NOT run.
 
 ## Next steps in order
 
-1. Inspect GitHub Actions for the foundation commit and resolve failures; commit a reviewed dependency lockfile.
+1. Commit a reviewed dependency lockfile before production release. Foundation CI checks have passed.
 2. Link the existing new Netlify project to this repository and enable PR Deploy Previews once safe deployment controls are verified.
 3. Configure and test private preview access. Never publish the application without the required approval.
 4. Confirm the Supabase organization, region and cost; create isolated environments, schema and policies.
