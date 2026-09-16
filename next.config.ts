@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
+    const productionHeaders = process.env.CONTEXT === "production" ? [] :
+      [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
     return [{
       source: "/:path*",
       headers: [
@@ -10,7 +12,7 @@ const config: NextConfig = {
         { key: "Referrer-Policy", value: "no-referrer" },
         { key: "X-Frame-Options", value: "DENY" },
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-        { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }
+        ...productionHeaders
       ]
     }];
   }

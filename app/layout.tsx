@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { checkPreviewAccess } from "../lib/preview-access.mjs";
+import { checkPreviewAccess, isPublicProduction } from "../lib/preview-access.mjs";
 import "./globals.css";
 
+const publicProduction = isPublicProduction(process.env.CONTEXT);
+
 export const metadata: Metadata = {
-  title: "Document to Excel | Private preview",
+  title: publicProduction ? "Document to Excel" : "Document to Excel | Private preview",
   description: "A workspace for turning document tables into editable spreadsheets.",
-  robots: { index: false, follow: false }
+  robots: publicProduction ? { index: true, follow: true } : { index: false, follow: false }
 };
 export const dynamic = "force-dynamic";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  if (publicProduction) return <html lang="en"><body>{children}</body></html>;
   // Defense in depth if a host ever skips Proxy for an HTML request.
   const requestHeaders = await headers();
   const access = await checkPreviewAccess(requestHeaders.get("authorization"), {
