@@ -1,19 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-import { checkPreviewAccess, blockedPreviewResponse, isPublicProduction } from "./lib/preview-access.mjs";
+import { NextResponse } from "next/server";
 
-export async function proxy(request: NextRequest) {
-  const isDedicatedPreviewSite = process.env.SITE_NAME === "bank-reconciliation-preview";
-  if (isPublicProduction(process.env.CONTEXT) || isDedicatedPreviewSite) return NextResponse.next();
-  const result = await checkPreviewAccess(request.headers.get("authorization"), {
-    username: process.env.PREVIEW_ACCESS_USERNAME,
-    password: process.env.PREVIEW_ACCESS_PASSWORD
-  });
-  if (result !== "allowed") return blockedPreviewResponse(result);
+export function proxy() {
   const response = NextResponse.next();
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   return response;
 }
 
-// No path exclusions: HTML, framework assets, RSC responses, APIs and files are gated.
+// This branch is deployed only to the dedicated bank-reconciliation preview site.
+// The custom Basic-auth gate is intentionally disabled here so the owner can preview the system.
 export const config = { matcher: ["/:path*"] };
