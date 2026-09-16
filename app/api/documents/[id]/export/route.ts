@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildWorkbook } from "../../../../../lib/workbook";
 import type { Database } from "../../../../../lib/database.types";
-import type { CellValue } from "../../../../../lib/document-types";
+import type { CellValue, ReconciliationRecord } from "../../../../../lib/document-types";
 
 export const runtime = "nodejs";
 
@@ -30,17 +30,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     .single();
   if (!document) return NextResponse.json({ error: "Document not found." }, { status: 404 });
 
-  const { data: rows, error: rowsError } = await supabase
-    .from("document_rows")
-    .select("row_data")
-    .eq("document_id", id)
-    .order("row_number");
+  const [{ data: rows, error: rowsError }, { data: reconciliation }] = await Promise.all([
+    supabase.from("document_rows").select("row_data").eq("document_id", id).order("row_number"),
+    supabase.from("document_reconciliations").select("*").eq("document_id", id).maybeSingle()
+  ]);
   if (rowsError || !rows?.length) return NextResponse.json({ error: "No extracted rows are available." }, { status: 409 });
 
   const workbook = await buildWorkbook(
     document.columns as string[],
     rows.map((row) => row.row_data as Record<string, CellValue>),
-    document.title || "Extracted data"
+    document.title || "Extracted data",
+    reconciliation as unknown as ReconciliationRecord | null
   );
   const exportPath = `${userData.user.id}/${id}/converted.xlsx`;
   const { error: uploadError } = await supabase.storage.from("exports").upload(exportPath, workbook, {

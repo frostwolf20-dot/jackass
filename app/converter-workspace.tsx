@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient, hasSupabaseBrowserConfig } from "../lib/supabase-browser";
-import type { CellValue, DocumentRecord, DocumentRow } from "../lib/document-types";
+import type { CellValue, DocumentRecord, DocumentRow, ReconciliationRecord } from "../lib/document-types";
 import type { Json } from "../lib/database.types";
 
 const allowedTypes = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
@@ -14,6 +14,21 @@ function safeFileName(name: string) {
 
 function friendlyStatus(status?: DocumentRecord["status"]) {
   return ({ uploading: "Uploading…", queued: "Waiting to process…", processing: "Extracting the table…", completed: "Ready to review", failed: "Conversion failed" })[status ?? "uploading"];
+}
+
+function money(value: number | null, currency: string) {
+  if (value === null) return "Not available";
+  try {
+    return new Intl.NumberFormat("en-GB", { style: "currency", currency }).format(value / 100);
+  } catch {
+    return `${(value / 100).toFixed(2)} ${currency}`;
+  }
+}
+
+function reconciliationHeading(status: ReconciliationRecord["status"]) {
+  if (status === "reconciled") return "Statement reconciled";
+  if (status === "failed") return "Statement does not reconcile";
+  return "Review required";
 }
 
 export function ConverterWorkspace() {
@@ -29,6 +44,7 @@ export function ConverterWorkspace() {
   const [busy, setBusy] = useState(false);
   const [document, setDocument] = useState<DocumentRecord | null>(null);
   const [rows, setRows] = useState<DocumentRow[]>([]);
+  const [reconciliation, setReconciliation] = useState<ReconciliationRecord | null>(null);
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
@@ -47,6 +63,11 @@ export function ConverterWorkspace() {
     return () => data.subscription.unsubscribe();
   }, [configured, supabase]);
 
+  const refreshReconciliation = useCallback(async (id: string) => {
+    const result = await supabase.from("document_reconciliations").select("*").eq("document_id", id).maybeSingle();
+    if (!result.error) setReconciliation((result.data as unknown as ReconciliationRecord | null) ?? null);
+  }, [supabase]);
+
   const refreshDocument = useCallback(async (id: string) => {
     const { data, error } = await supabase.from("documents").select("*").eq("id", id).single();
     if (error || !data) return;
@@ -54,8 +75,9 @@ export function ConverterWorkspace() {
     if (data.status === "completed") {
       const result = await supabase.from("document_rows").select("*").eq("document_id", id).order("row_number");
       if (!result.error && result.data) setRows(result.data as unknown as DocumentRow[]);
+      await refreshReconciliation(id);
     }
-  }, [supabase]);
+  }, [refreshReconciliation, supabase]);
 
   useEffect(() => {
     if (!document || !["uploading", "queued", "processing"].includes(document.status)) return;
@@ -90,6 +112,7 @@ export function ConverterWorkspace() {
     setBusy(true);
     setMessage("");
     setRows([]);
+    setReconciliation(null);
     const id = crypto.randomUUID();
     const path = `${session.user.id}/${id}/${safeFileName(file.name)}`;
     const baseRecord = {
@@ -145,6 +168,23 @@ export function ConverterWorkspace() {
     setDirty(true);
   }
 
+  async function rerunReconciliation() {
+    if (!document || !session || !reconciliation) return true;
+    setMessage("Rechecking statement balances…");
+    const response = await fetch(`/api/documents/${document.id}/reconcile`, {
+      method: "POST",
+      headers: { "x-supabase-authorization": `Bearer ${session.access_token}` }
+    });
+    const result = await response.json() as { reconciliation?: ReconciliationRecord; error?: string };
+    if (!response.ok || !result.reconciliation) {
+      setMessage(result.error || "The statement could not be rechecked.");
+      return false;
+    }
+    setReconciliation(result.reconciliation);
+    setMessage(result.reconciliation.status === "reconciled" ? "Statement reconciled after your changes." : "Changes saved and statement rechecked.");
+    return true;
+  }
+
   async function saveRows() {
     if (!document || !session || !dirty) return true;
     setBusy(true);
@@ -156,13 +196,15 @@ export function ConverterWorkspace() {
       updated_at: new Date().toISOString()
     }));
     const result = await supabase.from("document_rows").upsert(payload, { onConflict: "document_id,row_number" });
-    setBusy(false);
     if (result.error) {
+      setBusy(false);
       setMessage("Your edits could not be saved.");
       return false;
     }
     setDirty(false);
-    setMessage("Edits saved.");
+    if (reconciliation) await rerunReconciliation();
+    else setMessage("Edits saved.");
+    setBusy(false);
     return true;
   }
 
@@ -180,6 +222,8 @@ export function ConverterWorkspace() {
     setMessage("Download ready. The private link expires in 60 seconds.");
     window.location.assign(result.url);
   }
+
+  const failedRows = new Set((reconciliation?.issues ?? []).map((issue) => issue.rowNumber).filter((value): value is number => typeof value === "number"));
 
   if (!authReady) return <div className="upload-panel"><p>Opening your secure workspace…</p></div>;
 
@@ -219,14 +263,42 @@ export function ConverterWorkspace() {
     {document && <div className="real-review">
       <div className="real-review-head">
         <div><strong>{document.original_name}</strong><small>{friendlyStatus(document.status)}</small></div>
-        <button className="text-button" disabled={busy} onClick={() => { setDocument(null); setRows([]); setMessage(""); }}>Convert another</button>
+        <button className="text-button" disabled={busy} onClick={() => { setDocument(null); setRows([]); setReconciliation(null); setMessage(""); }}>Convert another</button>
       </div>
       {["uploading", "queued", "processing"].includes(document.status) && <div className="processing-state"><span/><p>{friendlyStatus(document.status)} You can leave this tab and return later.</p></div>}
       {document.status === "failed" && <div className="error-state"><p>Conversion failed ({document.error_code || "unknown error"}). Try a clearer file or image.</p></div>}
       {document.status === "completed" && <>
         {document.warnings.length > 0 && <div className="warning-box"><strong>Check these details</strong>{document.warnings.map((warning, index) => <p key={index}>{warning}</p>)}</div>}
+        {reconciliation && <section className={`reconciliation-card reconciliation-${reconciliation.status}`} aria-live="polite">
+          <div className="reconciliation-title">
+            <div>
+              <span className="reconciliation-mark" aria-hidden="true">{reconciliation.status === "reconciled" ? "✓" : reconciliation.status === "failed" ? "×" : "!"}</span>
+              <div><strong>{reconciliationHeading(reconciliation.status)}</strong><small>{reconciliation.bank_name || "Bank statement"} · {reconciliation.verification_level.replaceAll("_", " ")}</small></div>
+            </div>
+            <span className="reconciliation-status">{reconciliation.status.replaceAll("_", " ")}</span>
+          </div>
+          <div className="reconciliation-grid">
+            <div><span>Opening balance</span><strong>{money(reconciliation.opening_balance, reconciliation.currency)}</strong></div>
+            <div><span>Total credits</span><strong>{money(reconciliation.total_credits, reconciliation.currency)}</strong></div>
+            <div><span>Total debits</span><strong>{money(reconciliation.total_debits, reconciliation.currency)}</strong></div>
+            <div><span>Calculated closing</span><strong>{money(reconciliation.calculated_closing_balance, reconciliation.currency)}</strong></div>
+            <div><span>Statement closing</span><strong>{money(reconciliation.statement_closing_balance, reconciliation.currency)}</strong></div>
+            <div><span>Difference</span><strong>{money(reconciliation.closing_difference, reconciliation.currency)}</strong></div>
+          </div>
+          <div className="reconciliation-checks">
+            <span>Transactions: {reconciliation.transaction_count}</span>
+            <span>Running balances: {reconciliation.running_balance_checks - reconciliation.running_balance_failures}/{reconciliation.running_balance_checks}</span>
+            {reconciliation.page_checks > 0 && <span>Page continuity: {reconciliation.page_checks - reconciliation.failed_page_checks}/{reconciliation.page_checks}</span>}
+            <span>Issues: {reconciliation.issues.length}</span>
+          </div>
+          {reconciliation.issues.length > 0 && <div className="reconciliation-issues">
+            {reconciliation.issues.slice(0, 6).map((issue, index) => <p key={`${issue.type}-${issue.rowNumber ?? index}`}>
+              {issue.rowNumber ? `Row ${issue.rowNumber}: ` : ""}{issue.type.replaceAll("_", " ")}
+            </p>)}
+          </div>}
+        </section>}
         <div className="table-scroll"><table className="extracted-table"><thead><tr><th>#</th>{document.columns.map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>
-          {rows.map((row, rowIndex) => <tr key={row.id}><th>{row.row_number}</th>{document.columns.map((column) => <td key={column}><input aria-label={`${column}, row ${row.row_number}`} value={String(row.row_data[column] ?? "")} onChange={(e) => changeCell(rowIndex, column, e.target.value)} /></td>)}</tr>)}
+          {rows.map((row, rowIndex) => <tr key={row.id} className={failedRows.has(row.row_number) ? "reconciliation-row-issue" : undefined}><th>{row.row_number}</th>{document.columns.map((column) => <td key={column}><input aria-label={`${column}, row ${row.row_number}`} value={String(row.row_data[column] ?? "")} onChange={(e) => changeCell(rowIndex, column, e.target.value)} /></td>)}</tr>)}
         </tbody></table></div>
         <div className="conversion-actions">
           <button className="button secondary" disabled={busy || !dirty} onClick={saveRows}>Save changes</button>
