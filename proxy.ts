@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkPreviewAccess, blockedPreviewResponse, isPublicProduction } from "./lib/preview-access.mjs";
 
 export async function proxy(request: NextRequest) {
-  if (isPublicProduction(process.env.CONTEXT)) return NextResponse.next();
+  const isDedicatedPreviewSite = process.env.SITE_NAME === "bank-reconciliation-preview";
+  if (isPublicProduction(process.env.CONTEXT) || isDedicatedPreviewSite) return NextResponse.next();
   const result = await checkPreviewAccess(request.headers.get("authorization"), {
     username: process.env.PREVIEW_ACCESS_USERNAME,
     password: process.env.PREVIEW_ACCESS_PASSWORD
