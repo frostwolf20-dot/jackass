@@ -3,7 +3,7 @@ import { checkPreviewAccess, blockedPreviewResponse, isPublicProduction } from "
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const publicProduction = isPublicProduction(process.env.CONTEXT);
+  const publicProduction = isPublicProduction(process.env.APP_ENV);
   if (!publicProduction) {
     const result = await checkPreviewAccess(request.headers.get("authorization"), {
       username: process.env.PREVIEW_ACCESS_USERNAME,

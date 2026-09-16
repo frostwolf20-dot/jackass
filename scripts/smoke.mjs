@@ -55,7 +55,7 @@ async function runScenario(configured) {
 async function runPublicProduction() {
   const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)], {
     stdio: ["ignore", "ignore", "inherit"],
-    env: { ...process.env, NODE_ENV: "production", CONTEXT: "production", PREVIEW_ACCESS_USERNAME: "", PREVIEW_ACCESS_PASSWORD: "" }
+    env: { ...process.env, NODE_ENV: "production", APP_ENV: "production", PREVIEW_ACCESS_USERNAME: "", PREVIEW_ACCESS_PASSWORD: "" }
   });
   const exited = once(child, "exit");
   try {
@@ -77,7 +77,7 @@ async function runPublicProduction() {
   }
 }
 
-if (process.env.CONTEXT === "production") {
+if (process.env.APP_ENV === "production") {
   await runPublicProduction();
   console.log("Production smoke checks passed: public routes respond without preview credentials.");
 } else {
