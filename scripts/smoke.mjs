@@ -51,6 +51,37 @@ async function runScenario(configured) {
     }
   }
 }
-await runScenario(false);
-await runScenario(true);
-console.log("Production smoke checks passed: access fails closed and authorized routes respond.");
+
+async function runPublicProduction() {
+  const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)], {
+    stdio: ["ignore", "ignore", "inherit"],
+    env: { ...process.env, NODE_ENV: "production", CONTEXT: "production", PREVIEW_ACCESS_USERNAME: "", PREVIEW_ACCESS_PASSWORD: "" }
+  });
+  const exited = once(child, "exit");
+  try {
+    let response;
+    for (let attempt=0; attempt<100; attempt++) {
+      try { response = await fetch(origin, { signal: AbortSignal.timeout(1000) }); break; } catch { await delay(250); }
+    }
+    assert.equal(response?.status, 200, "Production home page must be public");
+    assert.match(await response.text(), /Document to Excel/);
+    const status = await fetch(origin + "/api/status");
+    assert.equal(status.status, 200, "Production status endpoint must be public");
+  } finally {
+    child.kill("SIGTERM");
+    await Promise.race([exited, delay(5000)]);
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill("SIGKILL");
+      await exited;
+    }
+  }
+}
+
+if (process.env.CONTEXT === "production") {
+  await runPublicProduction();
+  console.log("Production smoke checks passed: public routes respond without preview credentials.");
+} else {
+  await runScenario(false);
+  await runScenario(true);
+  console.log("Preview smoke checks passed: access fails closed and authorized routes respond.");
+}

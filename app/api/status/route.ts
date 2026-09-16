@@ -1,15 +1,18 @@
-import { checkPreviewAccess, blockedPreviewResponse } from "../../../lib/preview-access.mjs";
+import { checkPreviewAccess, blockedPreviewResponse, isPublicProduction } from "../../../lib/preview-access.mjs";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const result = await checkPreviewAccess(request.headers.get("authorization"), {
-    username: process.env.PREVIEW_ACCESS_USERNAME,
-    password: process.env.PREVIEW_ACCESS_PASSWORD
-  });
-  if (result !== "allowed") return blockedPreviewResponse(result);
+  const publicProduction = isPublicProduction(process.env.CONTEXT);
+  if (!publicProduction) {
+    const result = await checkPreviewAccess(request.headers.get("authorization"), {
+      username: process.env.PREVIEW_ACCESS_USERNAME,
+      password: process.env.PREVIEW_ACCESS_PASSWORD
+    });
+    if (result !== "allowed") return blockedPreviewResponse(result);
+  }
   return Response.json({
-    status: "private-preview",
+    status: publicProduction ? "production" : "private-preview",
     conversionAvailable: Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL &&
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY

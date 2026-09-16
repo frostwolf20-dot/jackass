@@ -1,9 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkPreviewAccess, blockedPreviewResponse } from "../lib/preview-access.mjs";
+import { checkPreviewAccess, blockedPreviewResponse, isPublicProduction } from "../lib/preview-access.mjs";
 
 const credentials = { username: "test-user", password: "only-a-test-password-0123456789" };
 const auth = (value) => "Basic " + btoa(value);
+
+test("only Netlify's production context is public", () => {
+  assert.equal(isPublicProduction("production"), true);
+  for (const context of [undefined, "dev", "branch-deploy", "deploy-preview"]) {
+    assert.equal(isPublicProduction(context), false);
+  }
+});
 
 test("missing or short credentials lock the app, even when a header is supplied", async () => {
   for (const config of [{}, { username: "test-user" }, { ...credentials, password: "short" }]) {
