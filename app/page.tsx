@@ -1,4 +1,5 @@
 import { SampleReview } from "./sample-review";
+import { ConverterWorkspace } from "./converter-workspace";
 
 function Mark() {
   return <span className="brand-mark" aria-hidden="true"><i/><i/><i/><i/></span>;
@@ -11,7 +12,7 @@ export default function Home() {
       <a href="/" className="brand"><Mark/><span>Document<span className="brand-light"> to Excel</span></span></a>
       <nav aria-label="Main navigation">
         <a href="#how-it-works">How it works</a>
-        <a href="#sample">Sample workspace</a>
+        <a href="#workspace">Convert a document</a>
         <span className="preview-badge"><span/>Private preview</span>
       </nav>
     </header>
@@ -21,8 +22,8 @@ export default function Home() {
           <p className="eyebrow"><span/>LESS COPYING. MORE CLARITY.</p>
           <h1>Your documents.<br/>Ready for <em>Excel.</em></h1>
           <p className="hero-description">Move from pages of information to tables you can work with. Upload a document, review the extracted data, and make every row count.</p>
-          <a className="button primary" href="#sample">Explore a sample <span aria-hidden="true">↗</span></a>
-          <p className="hero-note">A first look at your new document workspace.</p>
+          <a className="button primary" href="#workspace">Convert a document <span aria-hidden="true">↗</span></a>
+          <p className="hero-note">Private PDF and image conversion is enabled for testing.</p>
         </div>
         <div className="conversion-illustration" aria-label="Illustration of a document becoming a spreadsheet">
           <div className="paper"><div className="paper-top"><span>DOCUMENT</span><b>PDF</b></div><div className="paper-title"/><div className="paper-line"/><div className="paper-line short"/><div className="paper-grid"/><div className="paper-line"/><div className="paper-line short"/></div>
@@ -32,18 +33,9 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="workspace" aria-labelledby="workspace-title">
+      <section id="workspace" className="workspace" aria-labelledby="workspace-title">
         <div className="section-heading"><div><p className="eyebrow">YOUR WORKSPACE</p><h2 id="workspace-title">Start with a document</h2></div><span className="subtle-label">PDF · JPG · PNG</span></div>
-        <div className="workspace-grid">
-          <div className="upload-panel">
-            <span className="upload-icon" aria-hidden="true">↑</span>
-            <h3>A simpler way to work with tables</h3>
-            <p>Your upload space will be ready when conversion is enabled.</p>
-            <button className="button upload-button" disabled>Choose a document</button>
-            <p className="setup-note">Uploads are not available in this preview. Explore the sample below.</p>
-          </div>
-          <aside className="workspace-aside"><span className="aside-label">BUILT AROUND YOUR WORK</span><h3>From a page<br/>to a useful table.</h3><p>Bank statements, invoices and reports often hold the information you need. The goal is to make that information easier to use.</p><div className="document-types"><span>Bank statements</span><span>Invoices</span><span>Reports</span></div><a href="#how-it-works">See the planned workflow <span aria-hidden="true">→</span></a></aside>
-        </div>
+        <ConverterWorkspace/>
       </section>
 
       <SampleReview/>
@@ -57,11 +49,11 @@ export default function Home() {
         </div>
       </section>
       <section className="faq" aria-labelledby="faq-title"><h2 id="faq-title">A few things to know</h2>
-        <details><summary>Can I convert my files yet?</summary><p>This is the interface foundation. Uploads, extraction, accounts, billing and XLSX exports are not enabled yet. The sample workspace uses fictional data only.</p></details>
+        <details><summary>Can I convert my files yet?</summary><p>Yes. Sign in with a test account and upload a PDF, JPG, PNG or WebP file up to 20 MB. The fictional sample remains available below as a quick interface example.</p></details>
         <details><summary>Will every document convert perfectly?</summary><p>No. Image quality, layout and handwriting can affect extraction. The review step is part of the product so you can check important values against the source.</p></details>
         <details><summary>What happens to edits in the sample?</summary><p>They stay in this browser tab and reset when you reload. No sample edits are uploaded or saved to an account.</p></details>
       </section>
     </main>
-    <footer><a className="brand" href="/"><Mark/><span>Document to Excel</span></a><p>Private product preview · Conversion coming after setup</p><a href="#main">Back to top ↑</a></footer>
+    <footer><a className="brand" href="/"><Mark/><span>Document to Excel</span></a><p>Private product preview · Test files only</p><a href="#main">Back to top ↑</a></footer>
   </>;
 }
