@@ -8,7 +8,7 @@ const origin = "http://127.0.0.1:" + port;
 const password = "ci-only-test-password-0123456789";
 const authorization = "Basic " + Buffer.from("test-user:" + password).toString("base64");
 async function runScenario(configured) {
-  const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-p", String(port)], {
+  const child = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", String(port)], {
     stdio: ["ignore", "ignore", "inherit"],
     env: { ...process.env, NODE_ENV: "production", PREVIEW_ACCESS_USERNAME: configured ? "test-user" : "", PREVIEW_ACCESS_PASSWORD: configured ? password : "" }
   });
@@ -40,7 +40,7 @@ async function runScenario(configured) {
       assert.match(await home.text(), /Fictional sample/);
       const status = await fetch(origin + "/api/status", { headers: { authorization } });
       assert.equal(status.status, 200);
-      assert.deepEqual(await status.json(), { status: "foundation", conversionAvailable: false });
+      assert.deepEqual(await status.json(), { status: "private-preview", conversionAvailable: false });
     }
   } finally {
     child.kill("SIGTERM");
@@ -53,4 +53,4 @@ async function runScenario(configured) {
 }
 await runScenario(false);
 await runScenario(true);
-console.log("Production smoke checks passed: access fails closed; authorized routes respond; conversion is disabled.");
+console.log("Production smoke checks passed: access fails closed and authorized routes respond.");

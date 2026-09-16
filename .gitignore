@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .netlify/
+supabase/.temp/
 out/
 coverage/
 .env*

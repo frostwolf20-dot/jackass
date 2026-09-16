@@ -9,7 +9,10 @@ export async function GET(request: Request) {
   });
   if (result !== "allowed") return blockedPreviewResponse(result);
   return Response.json({
-    status: "foundation",
-    conversionAvailable: false
+    status: "private-preview",
+    conversionAvailable: Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    )
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
