@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { checkPreviewAccess, isPublicProduction } from "../lib/preview-access.mjs";
 import "./globals.css";
 
-const publicProduction = isPublicProduction(process.env.CONTEXT);
+const publicProduction = isPublicProduction(process.env.APP_ENV);
 
 export const metadata: Metadata = {
   title: publicProduction ? "Document to Excel" : "Document to Excel | Private preview",

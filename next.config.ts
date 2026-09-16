@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
   async headers() {
-    const productionHeaders = process.env.CONTEXT === "production" ? [] :
+    const productionHeaders = process.env.APP_ENV === "production" ? [] :
       [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
     return [{
       source: "/:path*",
